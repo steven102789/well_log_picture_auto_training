@@ -6,3 +6,5 @@ create_well_logging_h5/output/**/
 
 # Ignore all files and subdirectories in experiment directory
 experiment/**/
+
+.idea/
