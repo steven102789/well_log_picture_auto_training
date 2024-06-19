@@ -1,10 +1,10 @@
 # Ignore all CSV files in create_well_logging_h5/input directory
-create_well_logging_h5/input/*.csv
+create_well_logging_h5/input_data/*.csv
 
 # Ignore all files and subdirectories in create_well_logging_h5/output directory
-create_well_logging_h5/output/**/
+create_well_logging_h5/output_data/**/
 
 # Ignore all files and subdirectories in experiment directory
-experiment/**/
+experiments/**/
 
 .idea/
