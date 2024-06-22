@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import filedialog
 import os
 import yaml
+from src.well_logg_processing import process_well_log_data, split_test_df, create_h5
+import pandas as pd
 
 def create_experiment_folder(source_folder: str,
                              experiment_folder: str,
@@ -54,7 +56,6 @@ def create_experiment_folder(source_folder: str,
             yaml.dump(config_data, config_file)
     print('實驗資料夾製作完成!!')
 
-
 def select_directory(title: str, initial_dir: str = None) -> str:
     """
     打開文件對話框以選擇目錄。
@@ -100,7 +101,6 @@ def select_file(title: str, initial_dir: str = None) -> str:
 
     return file_path
 
-
 def clear_directory(directory_path: str):
     """
     清空指定目錄中的所有文件，但保留子目錄。
@@ -124,3 +124,88 @@ def clear_directory(directory_path: str):
         elif os.path.isdir(item_path):
             # 清空子目录中的文件（递归调用）
             clear_directory(item_path)
+
+def select_classifier_number() -> int:
+    """
+        提示用戶選擇分類數量。
+
+        Returns:
+            int: 選擇的分類數量 (2, 3 或 4)。
+
+        Raises:
+            ValueError: 如果輸入的不是 2、3 或 4。
+        """
+    classifier_number = int(input("要做幾類別(2/3/4):").strip())
+    if classifier_number not in [2, 3, 4]:
+        raise ValueError("只能输入2、3 或 4。")
+    return  classifier_number
+
+def select_create_experiment_folder(input_dataset_folder:str, classifier_number:int, for_index) ->str:
+    """
+    根據用戶選擇創建或選擇實驗資料夾。
+
+    Args:
+        input_dataset_folder (str): 輸入數據集文件夾的路徑。
+        classifier_number (int): 分類器的類別數量 (2, 3 或 4)。
+        for_index (int): 創建實驗資料夾的索引範圍。
+
+    Returns:
+        str: 選擇或創建的實驗資料夾路徑。
+
+    Raises:
+        ValueError: 當輸入不是 'y' 或 'n' 時引發錯誤。
+    """
+    select_create_experiment = input("是否需要制作實驗資料夾 ?: (y/n)").strip().lower()
+
+    if select_create_experiment == 'y':
+        select_experiments_dir = select_directory('請選擇實驗文件夹', initial_dir='experiments')
+        create_experiment_folder(source_folder=input_dataset_folder,
+                                 experiment_folder=select_experiments_dir,
+                                 class_number=classifier_number,
+                                 for_index=for_index)
+        select_experiments_dir = os.path.join(select_experiments_dir , f'class_{classifier_number}')
+        return select_experiments_dir
+    elif select_create_experiment == 'n':
+        return select_directory('請選擇製作好的文件夹', initial_dir='experiments/')
+    else:
+        raise ValueError("只能输入 'y' 或 'n'。")
+
+def select_well_log_processing(classifier_number:int) -> str:
+    """
+        根據用戶選擇進行well log數據處理，並返回暫存位置。
+
+        Args:
+            classifier_number (int): 分類器的類別數量 (2, 3 或 4)。
+
+        Returns:
+            str: 選擇或創建的暫存資料夾路徑。
+
+        Raises:
+            ValueError: 當輸入不是 'y' 或 'n' 時引發錯誤。
+        """
+    select_create_experiment = input("是否要製作wellLogging取樣100m ?: (y/n)").strip().lower()
+
+    if select_create_experiment == 'y':
+        select_source_csv_path = select_file('请输入csv', 'create_well_logging_h5/input_data')
+        source_csv = pd.read_csv(select_source_csv_path, index_col=False)
+        # 取樣100m
+        df_section = process_well_log_data(source_csv, classifier_number, 1000)
+        select_test_number= str(input("請輸入測試井井號:").strip())
+        train_val_df, test_df = split_test_df(df_section, select_test_number)
+        temp_output_folder = select_directory('請選擇dataset暫存位置', 'create_well_logging_h5/output_data/')
+        print(f'已選擇{temp_output_folder}')
+        clear_directory(temp_output_folder)#清除先前文件
+        create_h5(train_val_df,
+                  test_df,
+                  class_type=str(classifier_number),
+                  for_index=10,
+                  output_path=temp_output_folder)
+        csv_name = os.path.join(temp_output_folder, f'class{classifier_number}_df_section.csv')
+        df_section.to_csv(csv_name, index=False, encoding='utf-8-sig')
+        return temp_output_folder
+
+    elif select_create_experiment == 'n':
+        temp_output_folder = select_directory('請選擇dataset暫存位置', 'create_well_logging_h5/output_data/')
+        return temp_output_folder
+    else:
+        raise ValueError("只能输入 'y' 或 'n'。")
