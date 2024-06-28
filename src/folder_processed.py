@@ -1,3 +1,4 @@
+import json
 import tkinter as tk
 from tkinter import filedialog
 import os
@@ -209,3 +210,52 @@ def select_well_log_processing(classifier_number:int) -> str:
         return temp_output_folder
     else:
         raise ValueError("只能输入 'y' 或 'n'。")
+
+
+def create_training_log(experiments_path):
+    """
+    在指定的实验路径下创建训练日志文件 `training_log.json`。
+
+    Parameters:
+    - experiments_path (str): 实验文件夹的路径。
+    """
+    log_path = os.path.join(experiments_path, 'training_log.json')
+
+    if not os.path.exists(log_path):
+        # 如果日志文件不存在，则创建一个新的日志文件
+        log_content = {
+            'logs': ''
+        }
+        with open(log_path, 'w') as log_file:
+            json.dump(log_content, log_file, indent=4)
+
+        print(f"已创建新的训练日志文件: {log_path}")
+    else:
+        print(f"训练日志文件已存在: {log_path}")
+
+
+def update_training_log(experiments_path, son_experiment_path):
+    """
+    更新训练日志文件 `training_log.json`，将 `son_experiment_path` 的内容写入 `logs` 字段。
+
+    Parameters:
+    - experiments_path (str): 实验文件夹的路径。
+    - son_experiment_path (str): 子实验文件夹的路径。
+    """
+    log_path = os.path.join(experiments_path, 'training_log.json')
+
+    if os.path.exists(log_path):
+        # 读取现有的日志文件内容
+        with open(log_path, 'r') as log_file:
+            log_content = json.load(log_file)
+
+        # 更新日志内容
+        log_content['logs'] = son_experiment_path
+
+        # 写入更新后的内容
+        with open(log_path, 'w') as log_file:
+            json.dump(log_content, log_file, indent=4)
+
+        print(f"已更新训练日志文件: {log_path}")
+    else:
+        print(f"训练日志文件不存在: {log_path}")

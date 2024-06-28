@@ -1,13 +1,15 @@
+import pickle
+
 import cv2
 import glob
 import gc
 import os
 import tqdm
+import tensorflow as tf
 import pandas as pd
 import numpy as np
 from model.CNNModel import CNNModel
 from model.U_NetModel import UNet, weighted_loss
-from src.DataProcessor import DataProcessor
 from src.draw_plot import draw_train_history_plot, plot_confusion_matrix, lithology_plot
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
@@ -18,6 +20,15 @@ from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils import compute_class_weight
+
+class DataProcessor:
+    def __init__(self, split_data, input_shape):
+        self.input_shape = input_shape
+        self.split_data = split_data
+
+    def preprocess_data(self, key):
+        data_list:list = list(self.split_data[key])
+        return tf.reshape(data_list, (len(data_list), self.input_shape, 1))
 
 def model_selector(select_number:str, config):
     if select_number == '0':
@@ -321,7 +332,13 @@ def train_u_net_model(config):
     class_weights = compute_class_weight(class_weight="balanced",
                                          classes=np.unique(train_masks_reshaped_encoded),
                                          y=train_masks_reshaped_encoded).tolist()
+    #存入class_weights供往後額外測試使用
+    class_weights_path = f'{excel_output_location}/random_number_{random_state}.pkl'
+    with open(class_weights_path , 'wb') as f:
+        pickle.dump(class_weights, f)
+    print("class_weights 已保存到 class_weights.pkl 檔案中。")
 
+    #模型建置
     model = UNet(n_classes=n_classes, img_height=SIZE_X, img_width=SIZE_Y).model
     model.compile(optimizer='adam',
                   loss= weighted_loss(categorical_crossentropy, class_weights),
