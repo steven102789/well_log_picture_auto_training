@@ -1,5 +1,4 @@
 import pickle
-
 import cv2
 import glob
 import gc
@@ -333,7 +332,7 @@ def train_u_net_model(config):
                                          classes=np.unique(train_masks_reshaped_encoded),
                                          y=train_masks_reshaped_encoded).tolist()
     #存入class_weights供往後額外測試使用
-    class_weights_path = f'{excel_output_location}/random_number_{random_state}.pkl'
+    class_weights_path = f'{output_location}/random_number_{random_state}.pkl'
     with open(class_weights_path , 'wb') as f:
         pickle.dump(class_weights, f)
     print("class_weights 已保存到 class_weights.pkl 檔案中。")

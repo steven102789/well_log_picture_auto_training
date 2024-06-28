@@ -27,7 +27,7 @@ def main():
         classifier_number += 1  # U-Net 多一個背景
         # 要做哪一個case
         case_dataset_folder = select_directory('請選擇case文件夹')
-        print(f"你已選擇: {os.path.basename(os.path.normpath(case_dataset_folder))}")
+        print(f"你已選擇: {case_dataset_folder}")
 
         # 是否需要制作實驗資料夾 ?
         experiments_path = select_create_experiment_folder(input_dataset_folder=case_dataset_folder,
@@ -39,31 +39,36 @@ def main():
         raise ValueError("未能獲取資料夾位置。")
 
     # 獲取實驗資料夾中的子資料夾列表
-    experiments_folder_list = [f for f in os.listdir(experiments_path) if os.path.isdir(os.path.join(experiments_path, f))]
-    #檢查是否有訓練紀錄
-    create_training_log(experiments_path)
+    sub_folder_list = [f for f in os.listdir(experiments_path) if os.path.isdir(os.path.join(experiments_path, f))]
+
+    #檢查是否有訓練紀錄，沒有就建立新log.json
+    create_training_log(experiments_path, sub_folder_list)
+    #檢查訓練紀錄是否有斷過
+    before_training_log_list = read_training_log_from_directory(experiments_path)
+    training_list = compare_lists(sub_folder_list, before_training_log_list)
 
     # 檢查是否有子資料夾
-    if not experiments_folder_list:
+    if not sub_folder_list:
         print("沒有實驗數據")
         return
     print('開始訓練')
 
     # 遍歷實驗資料夾中的子資料夾
-    for each_experiment_folder in experiments_folder_list:
+    for each_experiment_folder in training_list:
         son_experiment_path = os.path.join(experiments_path, each_experiment_folder)
+        print(f'現在開始從{son_experiment_path}訓練!')
         config_path = os.path.join(son_experiment_path, 'config.yaml')
         output_folder_path = os.path.join(son_experiment_path, 'output/')
-        training_log_path = os.path.join(experiments_path, 'training_log.json')
 
         # 確認 config.yaml 文件是否存在
         if os.path.exists(config_path):
+            #清除output資料夾內容
+            clear_directory(output_folder_path)
             # 讀取 config.yaml 檔案
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
                 model_selector(select_model_number, config)
-            # 更新训练日志文件中的内容
-            update_training_log(experiments_path, son_experiment_path)
+                update_training_log(experiments_path, each_experiment_folder)
         else:
             print(f"{config_path} 不存在")
 

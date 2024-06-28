@@ -80,7 +80,6 @@ def select_directory(title: str, initial_dir: str = None) -> str:
         directory_path += os.sep
     return directory_path
 
-
 def select_file(title: str, initial_dir: str = None) -> str:
     """
     打開文件對話框以選擇文件。
@@ -101,30 +100,6 @@ def select_file(title: str, initial_dir: str = None) -> str:
     root.destroy()  # 銷毀主窗口
 
     return file_path
-
-def clear_directory(directory_path: str):
-    """
-    清空指定目錄中的所有文件，但保留子目錄。
-
-    Args:
-        directory_path (str): 目標目錄路徑。
-
-    Returns:
-        None
-    """
-    # 确认目录存在
-    if not os.path.exists(directory_path):
-        print(f"目录不存在: {directory_path}")
-        return
-
-    # 遍历目录中的所有文件和文件夹
-    for item in os.listdir(directory_path):
-        item_path = os.path.join(directory_path, item)
-        if os.path.isfile(item_path):
-            os.remove(item_path)  # 删除文件
-        elif os.path.isdir(item_path):
-            # 清空子目录中的文件（递归调用）
-            clear_directory(item_path)
 
 def select_classifier_number() -> int:
     """
@@ -211,20 +186,41 @@ def select_well_log_processing(classifier_number:int) -> str:
     else:
         raise ValueError("只能输入 'y' 或 'n'。")
 
+def clear_directory(directory_path: str):
+    """
+    清除指定目录中的所有文件，但保留目录结构。
 
-def create_training_log(experiments_path):
+    Parameters:
+    - directory_path (str): 要清除的目录路径。
+    """
+    # 确保路径存在且是一个目录
+    if not os.path.exists(directory_path) or not os.path.isdir(directory_path):
+        raise ValueError(f"路径不存在或不是目录: {directory_path}")
+
+    for root, dirs, files in os.walk(directory_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                os.remove(file_path)
+                print(f"已删除文件: {file_path}")
+            except Exception as e:
+                print(f"无法删除文件 {file_path}: {e}")
+
+def create_training_log(experiments_path: str, sub_folder_list: list):
     """
     在指定的实验路径下创建训练日志文件 `training_log.json`。
 
     Parameters:
     - experiments_path (str): 实验文件夹的路径。
+    - sub_folder_list (list): 含有所有子資料夾名稱的列表
+
     """
     log_path = os.path.join(experiments_path, 'training_log.json')
 
     if not os.path.exists(log_path):
         # 如果日志文件不存在，则创建一个新的日志文件
         log_content = {
-            'logs': ''
+            'logs': sub_folder_list
         }
         with open(log_path, 'w') as log_file:
             json.dump(log_content, log_file, indent=4)
@@ -233,29 +229,69 @@ def create_training_log(experiments_path):
     else:
         print(f"训练日志文件已存在: {log_path}")
 
-
-def update_training_log(experiments_path, son_experiment_path):
+def read_training_log_from_directory(directory_path: str) -> list:
     """
-    更新训练日志文件 `training_log.json`，将 `son_experiment_path` 的内容写入 `logs` 字段。
+    从指定的目录中读取 `training_log.json` 文件，并将 `logs` 字段内容加载为一个列表对象。
 
     Parameters:
-    - experiments_path (str): 实验文件夹的路径。
-    - son_experiment_path (str): 子实验文件夹的路径。
+    - directory_path (str): 包含 `training_log.json` 文件的目录路径。
+
+    Returns:
+    - list: `logs` 字段内容的列表。
     """
-    log_path = os.path.join(experiments_path, 'training_log.json')
+    log_path = os.path.join(directory_path, 'training_log.json')
 
-    if os.path.exists(log_path):
-        # 读取现有的日志文件内容
-        with open(log_path, 'r') as log_file:
-            log_content = json.load(log_file)
+    if not os.path.exists(log_path):
+        raise FileNotFoundError(f"未找到日志文件: {log_path}")
 
-        # 更新日志内容
-        log_content['logs'] = son_experiment_path
+    with open(log_path, 'r') as log_file:
+        log_content = json.load(log_file)
 
-        # 写入更新后的内容
+    logs = log_content.get('logs', [])
+
+    if not isinstance(logs, list):
+        raise ValueError(f"日志文件中的 `logs` 字段内容不是列表: {log_path}")
+
+    return logs
+
+def compare_lists(sub_folder_list: list, training_log_list: list) -> list:
+    """
+    比较两个列表，如果它们完全相同则返回 `sub_folder_list`，否则返回 `training_log_list`。
+
+    Parameters:
+    - sub_folder_list (list): 子文件夹名称的列表。
+    - training_log_list (list): 从日志文件中读取的列表。
+
+    Returns:
+    - list: 如果两个列表相同则返回 `sub_folder_list`，否则返回 `training_log_list`。
+    """
+    if sub_folder_list == training_log_list:
+        return sub_folder_list
+    else:
+        return training_log_list
+
+def update_training_log(log_path, completed_folder):
+    """
+    更新训练日志文件，将已完成的文件夹从日志中移除。
+
+    Parameters:
+    - log_path (str): 训练日志文件的路径。
+    - completed_folder (str): 已完成的实验文件夹名称。
+    """
+    log_path = os.path.join(log_path, 'training_log.json')
+
+    if not os.path.exists(log_path):
+        raise FileNotFoundError(f"日志文件不存在: {log_path}")
+
+    with open(log_path, 'r') as log_file:
+        log_content = json.load(log_file)
+
+    if 'logs' in log_content:
+        log_content['logs'].remove(completed_folder)
+
         with open(log_path, 'w') as log_file:
             json.dump(log_content, log_file, indent=4)
 
-        print(f"已更新训练日志文件: {log_path}")
+        print(f"更新训练日志文件: {log_path}")
     else:
-        print(f"训练日志文件不存在: {log_path}")
+        raise KeyError(f"日志文件中不存在 'logs' 键: {log_path}")
